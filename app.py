@@ -60,6 +60,7 @@ st.markdown("""
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500;800&family=Oswald:wght@500;700&display=swap');
+
     :root {
         --bg-depth: #050505;
         --bg-surface: #121212;
@@ -75,6 +76,7 @@ st.markdown("""
         --radius-md: 4px;
         --neon-blue: #00f3ff;
     }
+    
     /* GLOBAL RESET */
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, sans-serif;
@@ -94,6 +96,7 @@ st.markdown("""
         background-size: 40px 40px;
         background-attachment: fixed;
     }
+
     /* HIDE STREAMLIT CHROME */
     header {visibility: hidden;}
     footer {visibility: hidden;}
@@ -101,6 +104,7 @@ st.markdown("""
         padding-top: 1rem;
         max-width: 95rem; 
     }
+
     /* --- TECHY HERO SECTION (ANIMATED) --- */
     .hero-container {
         position: relative;
@@ -120,6 +124,7 @@ st.markdown("""
         transition: all 0.3s ease;
         backdrop-filter: blur(4px);
     }
+
     /* Scanning Line Animation */
     .scan-line {
         position: absolute;
@@ -133,10 +138,12 @@ st.markdown("""
         box-shadow: 0 0 0.9375rem rgba(99, 102, 241, 0.8);
         pointer-events: none;
     }
+
     @keyframes scan {
         0% { top: -10%; }
         100% { top: 110%; }
     }
+
     /* Glitch Title Effect */
     .hero-title {
         font-family: 'JetBrains Mono', monospace;
@@ -194,6 +201,7 @@ st.markdown("""
         80% { clip-path: inset(50% 0 30% 0); transform: translate(0.125rem, -0.125rem); }
         100% { clip-path: inset(20% 0 70% 0); transform: translate(-0.125rem, 0.0625rem); }
     }
+
     /* Robot Text Animation */
     @keyframes robot-glitch-text {
         0% { opacity: 1; transform: translateX(0); text-shadow: 0 0 5px rgba(99, 102, 241, 0.8); }
@@ -205,6 +213,7 @@ st.markdown("""
         52% { opacity: 1; transform: skewX(0deg); }
         100% { opacity: 1; }
     }
+
     /* --- TEXT ROTATOR FOR SUBTITLE --- */
     .hero-subtitle-container {
         position: relative;
@@ -245,6 +254,7 @@ st.markdown("""
         color: #fff;
         animation: robot-glitch-text 4s infinite linear;
     }
+
     /* --- HERO CTA BUTTON (Robotic/YouTube) --- */
     .hero-btn-wrapper {
         display: flex;
@@ -288,6 +298,7 @@ st.markdown("""
         display: flex;
         align-items: center;
     }
+
     /* --- TECH CARDS (OVERVIEW) --- */
     .tech-card-container {
         display: grid;
@@ -391,6 +402,7 @@ st.markdown("""
         border: 1px solid rgba(16, 185, 129, 0.4);
         font-weight: 600;
     }
+
     /* --- DEMO VISUALIZER --- */
     .demo-container {
         margin: 2rem 0;
@@ -533,6 +545,7 @@ st.markdown("""
         gap: 5px;
     }
     .term-line { opacity: 0.8; }
+
     /* --- INPUTS --- */
     .stTextInput input {
         background-color: var(--bg-card) !important;
@@ -549,6 +562,7 @@ st.markdown("""
         border-color: #00f3ff !important;
         box-shadow: 0 0 15px rgba(0, 243, 255, 0.2) !important;
     }
+
     /* --- BUTTONS --- */
     div.stButton > button {
         background-color: var(--bg-surface);
@@ -595,6 +609,7 @@ st.markdown("""
         color: #fff !important;
         box-shadow: 0 0 20px rgba(255, 0, 0, 0.5) !important;
     }
+
     /* --- CONSOLE OUTPUT --- */
     .console-box {
         font-family: 'JetBrains Mono', monospace;
@@ -612,6 +627,7 @@ st.markdown("""
     
     .blink { animation: blinker 1s step-end infinite; }
     @keyframes blinker { 50% { opacity: 0; } }
+
     /* --- GENERAL UI --- */
     .section-header {
         font-family: 'JetBrains Mono', monospace;
@@ -701,7 +717,9 @@ def get_video_info(url, cookies=None, proxy=None):
         'quiet': True, 
         'nocheckcertificate': True, 
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'noplaylist': True 
+        'noplaylist': True,
+        'force_ipv4': True,  # ADDED: Forces IPv4 to reduce block chance
+        'cachedir': False,   # ADDED: Disables cache to avoid stale auth data
     }
     if cookies: opts['cookiefile'] = cookies
     if proxy: opts['proxy'] = proxy
@@ -712,7 +730,6 @@ def get_video_info(url, cookies=None, proxy=None):
         return None, str(e)
 
 # Removed create_pdf as it is no longer needed in this flow
-
 def fmt(s):
     m, s = divmod(s, 60)
     h, m = divmod(m, 60)
@@ -750,7 +767,6 @@ if not st.session_state['setup_active']:
     """, unsafe_allow_html=True)
 
 # --- SETUP PROTOCOL WIZARD ---
-
 if st.session_state.get('setup_active', False): 
     st.markdown('<div id="setup_location"></div>', unsafe_allow_html=True)
     
@@ -933,7 +949,6 @@ if st.session_state.get('setup_active', False):
                         st.caption("TEMPORAL SKIPPING")
                         st.slider("Min Skip (Seconds)", 1, 5, key='min_skip', help="Minimum time to wait after a capture")
                         st.slider("Max Skip (Seconds)", 5, 60, key='max_skip', help="Maximum time to jump if no changes found")
-
                 # EXECUTION & STOP BUTTONS
                 c_exec, c_stop = st.columns([3, 1])
                 with c_exec:
@@ -941,7 +956,6 @@ if st.session_state.get('setup_active', False):
                 with c_stop:
                     # Stop button logic: this triggers a rerun, effectively stopping the loop
                     st.button("STOP", type="primary", use_container_width=True, help="Interrupts scan.")
-
                 if init_scan:
                     # --- SCANNIN LOGIC MOVED HERE ---
                     st.session_state['scan_complete'] = False
@@ -971,6 +985,8 @@ if st.session_state.get('setup_active', False):
                         'quiet': True, 
                         'nocheckcertificate': True, 
                         'noplaylist': True,
+                        'force_ipv4': True,  # FORCE IPV4 TO AVOID BLOCKS
+                        'cachedir': False,   # DISABLE CACHE TO AVOID STALE COOKIES
                         'cookiefile': st.session_state.get('cookies_path'),
                         # ADDED: detailed headers to mimic a real browser to avoid 403/signature issues
                         'http_headers': {
@@ -1027,7 +1043,7 @@ if st.session_state.get('setup_active', False):
                                         if slide_counter >= max_slides_limit:
                                             st.warning(f"Slide limit ({max_slides_limit}) reached to conserve storage.")
                                             break
-
+                                        
                                         cap.set(cv2.CAP_PROP_POS_FRAMES, curr)
                                         ret, frame = cap.read()
                                         
@@ -1040,7 +1056,6 @@ if st.session_state.get('setup_active', False):
                                             time.sleep(1) # Wait a bit before retry
                                             continue
                                         retries = 0 # Reset retries on success
-
                                         if not ret: break
                                         
                                         # Update metrics
@@ -1095,13 +1110,11 @@ if st.session_state.get('setup_active', False):
                                     st.error("STREAM HANDSHAKE FAILED. Try refreshing cookies or ensure your IP is not blocked.")
                     except Exception as e:
                         st.error(f"Error during scan: {str(e)}")
-
             # --- DISPLAY RESULTS (IF ANY IMAGES EXIST ON DISK) ---
             # Checks if temp dir exists and is not empty
             has_files = False
             if os.path.exists(st.session_state['scan_temp_dir']) and len(os.listdir(st.session_state['scan_temp_dir'])) > 0:
                 has_files = True
-
             if has_files:
                 st.markdown("---")
                 st.markdown("""
@@ -1123,7 +1136,6 @@ if st.session_state.get('setup_active', False):
                 if files:
                     last_img_path = os.path.join(st.session_state['scan_temp_dir'], files[-1])
                     st.image(last_img_path, caption="LATEST_CAPTURED_ARTIFACT", width=300)
-
         # Navigation Footer
         st.write("")
         c_nav1, c_nav2, c_nav3 = st.columns([1, 4, 1])
@@ -1146,7 +1158,6 @@ if st.session_state.get('setup_active', False):
 # --- OTHER SECTIONS (HIDDEN WHEN SETUP IS ACTIVE) ---
 if not st.session_state['setup_active']:
     st.divider()
-
     # --- VISUAL DEMONSTRATION SECTION ---
     st.markdown("""
     <div class="demo-container">
@@ -1194,7 +1205,6 @@ if not st.session_state['setup_active']:
     </div>
     </div>
     """, unsafe_allow_html=True)
-
     # --- ROBOTIC SYSTEM OVERVIEW ---
     st.markdown("""
     <div style="text-align:center; margin-bottom: 2rem; margin-top: 3rem;">
@@ -1208,7 +1218,6 @@ if not st.session_state['setup_active']:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
     # Cards
     st.markdown("""
     <div class="tech-card-container">
