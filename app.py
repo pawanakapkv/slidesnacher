@@ -854,6 +854,7 @@ if st.session_state.get('setup_active', False):
                     st.markdown("**6. Authorize System**\nUpload `www.youtube.com_cookies.txt` below.")
                     uploaded_cookie = st.file_uploader("UPLOAD COOKIES.TXT", type=['txt'], label_visibility="collapsed")
                     if uploaded_cookie:
+                        # Ensures temporary file is kept
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.txt', mode='wb') as fp:
                             fp.write(uploaded_cookie.getvalue())
                             st.session_state['cookies_path'] = fp.name
@@ -870,9 +871,17 @@ if st.session_state.get('setup_active', False):
         
         else:
             # --- STEP 6: INTEGRATED SCANNING ---
-            st.markdown("""
-            <div style="border: 1px dashed #444; padding: 10px; background: rgba(0,0,0,0.5); font-family:'JetBrains Mono'; font-size:0.8rem; color:#888;">
-            // TARGET ACQUISITION MODE_
+            # Add Cookie Status Indicator
+            cookie_status = "❌ NO AUTH TOKEN"
+            cookie_color = "#ef4444"
+            if st.session_state.get('cookies_path') and os.path.exists(st.session_state['cookies_path']):
+                cookie_status = "✅ AUTH TOKEN ACTIVE"
+                cookie_color = "#10b981"
+            
+            st.markdown(f"""
+            <div style="border: 1px dashed #444; padding: 10px; background: rgba(0,0,0,0.5); font-family:'JetBrains Mono'; font-size:0.8rem; color:#888; display:flex; justify-content:space-between; align-items:center;">
+                <span>// TARGET ACQUISITION MODE_</span>
+                <span style="color:{cookie_color}; font-weight:bold;">{cookie_status}</span>
             </div>
             """, unsafe_allow_html=True)
             
