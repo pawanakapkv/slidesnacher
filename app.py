@@ -937,8 +937,9 @@ if st.session_state.get('setup_active', False):
                         # Format Logic
                         fmts = [f for f in meta.get('formats', []) if f.get('height')]
                         heights = sorted(list(set(f['height'] for f in fmts)), reverse=True)
-                        q_map = {f"{h}p RAW": f"bestvideo[height<={h}]/best[height<={h}]" for h in heights}
-                        q_map["AUTO_NEGOTIATE"] = "bestvideo/best"
+                        # UPDATE: Filter out AV1 codec (av01) which causes OpenCV errors
+                        q_map = {f"{h}p RAW": f"bestvideo[height<={h}][vcodec!*=av01]/best[height<={h}][vcodec!*=av01]" for h in heights}
+                        q_map["AUTO_NEGOTIATE"] = "bestvideo[vcodec!*=av01]/best[vcodec!*=av01]"
                         qual = st.selectbox("QUALITY STREAM", list(q_map.keys()), label_visibility="collapsed")
                     
                     with c_conf2:
