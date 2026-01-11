@@ -8,6 +8,7 @@ import shutil
 import time
 import base64
 import zipfile
+import traceback
 from PIL import Image
 
 # 1. PAGE CONFIGURATION
@@ -1026,7 +1027,9 @@ if st.session_state.get('setup_active', False):
                                 info = ydl.extract_info(url_wiz, download=False)
                                 stream_link = info.get('url')
                         except Exception as e:
-                            print(f"Primary Extract Failed: {e}")
+                            st.warning(f"Primary Method Failed: {str(e)}")
+                            with st.expander("View Primary Error Details"):
+                                st.code(traceback.format_exc())
 
                         if stream_link:
                             cap = cv2.VideoCapture(stream_link, cv2.CAP_FFMPEG)
@@ -1046,7 +1049,9 @@ if st.session_state.get('setup_active', False):
                                 if stream_link:
                                     cap = cv2.VideoCapture(stream_link, cv2.CAP_FFMPEG)
                             except Exception as e:
-                                st.error(f"Fallback Failed: {e}")
+                                st.error(f"Fallback Method Failed: {str(e)}")
+                                with st.expander("View Fallback Error Details"):
+                                    st.code(traceback.format_exc())
                         
                         # --- MAIN PROCESSING LOOP ---
                         if cap and cap.isOpened():
@@ -1147,9 +1152,20 @@ if st.session_state.get('setup_active', False):
                             console_ph.markdown('<div class="console-box" style="color:#10b981; border-color:#10b981;">✓ SEQUENCE COMPLETE</div>', unsafe_allow_html=True)
                             
                         else:
-                            st.error("STREAM HANDSHAKE FAILED. Try refreshing cookies or ensure your IP is not blocked.")
+                            st.error("STREAM HANDSHAKE FAILED.")
+                            st.markdown("### Debugging Info")
+                            st.write("The system could not establish a video connection. This is often due to:")
+                            st.write("1. Invalid or expired cookies.")
+                            st.write("2. YouTube blocking the IP address.")
+                            st.write("3. Restricted video format.")
+                            if stream_link:
+                                with st.expander("Generated Stream URL (Expired?)"):
+                                    st.code(stream_link)
                     except Exception as e:
-                        st.error(f"Error during scan: {str(e)}")
+                        st.error("CRITICAL SCAN ERROR")
+                        st.error(str(e))
+                        with st.expander("View Full System Traceback"):
+                            st.code(traceback.format_exc())
             # --- DISPLAY RESULTS (IF ANY IMAGES EXIST ON DISK) ---
             # Checks if temp dir exists and is not empty
             has_files = False
