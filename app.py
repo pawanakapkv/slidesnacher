@@ -700,8 +700,9 @@ def get_video_info(url, cookies=None, proxy=None):
     opts = {
         'quiet': True, 
         'nocheckcertificate': True, 
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'noplaylist': True 
+        'user_agent': 'Mozilla/5.0',
+        'noplaylist': True,
+        'extractor_args': {'youtube': {'player_client': ['android', 'web']}} # Bypass JS challenge
     }
     if cookies: opts['cookiefile'] = cookies
     if proxy: opts['proxy'] = proxy
@@ -973,6 +974,7 @@ if st.session_state.get('setup_active', False):
                         'noplaylist': True,
                         'cookiefile': st.session_state.get('cookies_path'),
                         # ADDED: detailed headers to mimic a real browser to avoid 403/signature issues
+                        'extractor_args': {'youtube': {'player_client': ['android', 'ios']}}, # Bypass JS challenge
                         'http_headers': {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                             'Accept': '*/*',
@@ -1248,6 +1250,6 @@ st.markdown("""
 <div class="tech-footer">
     SYSTEM_DESIGN BY 
     <a href="https://www.linkedin.com/in/pawan-kumar-verma" target="_blank">PAWAN KUMAR VERMA</a> 
-    // <span style="opacity:0.5">ALL_RIGHTS_RESERVED_2026</span>
+    // <span style="opacity:0.5">ALL_RIGHTS_RESERVED_2024</span>
 </div>
 """, unsafe_allow_html=True)
