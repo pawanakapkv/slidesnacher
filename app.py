@@ -1241,6 +1241,6 @@ st.markdown("""
 <div class="tech-footer">
     SYSTEM_DESIGN BY 
     <a href="https://www.linkedin.com/in/pawan-kumar-verma" target="_blank">PAWAN KUMAR VERMA</a> 
-    // <span style="opacity:0.5">ALL_RIGHTS_RESERVED_2024</span>
+    // <span style="opacity:0.5">ALL_RIGHTS_RESERVED_2026</span>
 </div>
 """, unsafe_allow_html=True)
