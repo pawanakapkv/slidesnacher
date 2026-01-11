@@ -841,7 +841,8 @@ if st.session_state.get('setup_active', False):
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.txt', mode='wb') as fp:
                             fp.write(uploaded_cookie.getvalue())
                             st.session_state['cookies_path'] = fp.name
-                        st.rerun()
+                        # Removed st.rerun() to prevent loop
+                        st.info("Configuration Loaded. Proceed to Next Phase.")
             with c_img:
                 img_path = get_step_image(step)
                 st.markdown('<div class="step-image-container">', unsafe_allow_html=True)
