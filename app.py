@@ -980,6 +980,7 @@ if st.session_state.get('setup_active', False):
                         # Placeholder for showing the image
                         last_artifact_area = st.empty()
                     
+                    # BASE OPTIONS
                     ydl_opts = {
                         'format': q_map[qual], 
                         'quiet': True, 
@@ -993,6 +994,8 @@ if st.session_state.get('setup_active', False):
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                             'Accept': '*/*',
                             'Accept-Language': 'en-US,en;q=0.5',
+                            'Referer': 'https://www.youtube.com/',
+                            'Origin': 'https://www.youtube.com',
                         }
                     }
                     
@@ -1004,110 +1007,138 @@ if st.session_state.get('setup_active', False):
                         pass
                     
                     try:
-                        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                            stream_link = ydl.extract_info(url_wiz, download=False).get('url')
+                        # --- ROBUST HANDSHAKE PROTOCOL ---
+                        stream_link = None
+                        cap = None
+                        
+                        # ATTEMPT 1: Selected Quality
+                        try:
+                            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                                info = ydl.extract_info(url_wiz, download=False)
+                                stream_link = info.get('url')
+                        except Exception as e:
+                            print(f"Primary Extract Failed: {e}")
+
+                        if stream_link:
+                            cap = cv2.VideoCapture(stream_link, cv2.CAP_FFMPEG)
+                        
+                        # ATTEMPT 2: Fallback to Best Compatibility (if Attempt 1 failed to open)
+                        if not cap or not cap.isOpened():
+                            st.toast("⚠️ Primary Handshake Failed. Engaging Fallback Protocol...", icon="🔄")
+                            console_ph.markdown('<div class="console-box" style="color:#fbbf24; border-color:#fbbf24;">⚠ RETRYING WITH COMPATIBILITY MODE...</div>', unsafe_allow_html=True)
                             
-                            if stream_link:
-                                console_ph.markdown(f'<div class="console-box"><span class="blink">●</span> STREAM LOCKED. SEEKING: {fmt(start_t)}</div>', unsafe_allow_html=True)
+                            # Switch to robust format
+                            ydl_opts['format'] = 'best[ext=mp4]/best'
+                            try:
+                                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                                    info = ydl.extract_info(url_wiz, download=False)
+                                    stream_link = info.get('url')
                                 
-                                cap = cv2.VideoCapture(stream_link, cv2.CAP_FFMPEG)
-                                if cap.isOpened():
-                                    fps = cap.get(cv2.CAP_PROP_FPS) or 30
-                                    cap.set(cv2.CAP_PROP_POS_MSEC, start_t * 1000)
-                                    
-                                    last = None
-                                    curr = int(start_t * fps)
-                                    end = int(end_t * fps)
-                                    total = max(1, end - curr)
-                                    origin = curr
-                                    
-                                    sensitivity = st.session_state['sensitivity']
-                                    strictness = st.session_state['strictness']
-                                    min_skip = st.session_state['min_skip']
-                                    max_skip = st.session_state['max_skip']
-                                    
-                                    slide_counter = 0
-                                    start_scan_time = time.time()
-                                    max_scan_duration = 600  # 10 minutes limit
-                                    max_slides_limit = 100    # Max 100 slides
-                                    retry_tolerance = 5
-                                    retries = 0
-                                    
-                                    while curr < end:
-                                        # 1. Timeout Check
-                                        if time.time() - start_scan_time > max_scan_duration:
-                                            st.warning(f"Scan paused after {max_scan_duration}s to prevent timeout. Download results below.")
-                                            break
-                                        
-                                        # 2. Slide Limit Check
-                                        if slide_counter >= max_slides_limit:
-                                            st.warning(f"Slide limit ({max_slides_limit}) reached to conserve storage.")
-                                            break
-                                        
-                                        cap.set(cv2.CAP_PROP_POS_FRAMES, curr)
-                                        ret, frame = cap.read()
-                                        
-                                        # 3. Stream Stability Check (Retry Logic)
-                                        if not ret:
-                                            retries += 1
-                                            if retries > retry_tolerance:
-                                                st.error("Stream connection lost after multiple retries.")
-                                                break
-                                            time.sleep(1) # Wait a bit before retry
-                                            continue
-                                        retries = 0 # Reset retries on success
-                                        if not ret: break
-                                        
-                                        # Update metrics
-                                        p = (curr - origin) / total
-                                        prog_bar.progress(min(max(p, 0.0), 1.0))
-                                        ts = fmt(curr / fps)
-                                        console_ph.markdown(f'<div class="console-box"><span class="blink">●</span> PROCESSING: {ts} | BUFFER: OK</div>', unsafe_allow_html=True)
-                                        
-                                        # CV Logic
-                                        small = cv2.resize(frame, (640, 360))
-                                        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
-                                        gray = cv2.GaussianBlur(gray, (21, 21), 0)
-                                        
-                                        is_diff = False
-                                        if last is None:
-                                            is_diff = True
-                                            last = gray
-                                        else:
-                                            d = cv2.absdiff(last, gray)
-                                            _, th = cv2.threshold(d, sensitivity, 255, cv2.THRESH_BINARY)
-                                            if np.sum(th) > (640 * 360 * (strictness/100) * 255):
-                                                is_diff = True
-                                                last = gray
-                                        
-                                        if is_diff:
-                                            slide_counter += 1
-                                            
-                                            # SAVE TO DISK (DISK BUFFER)
-                                            file_name = f"slide_{slide_counter:03d}.jpg"
-                                            save_path = os.path.join(st.session_state['scan_temp_dir'], file_name)
-                                            # 4. JPEG Compression (Quality 50) to save disk space
-                                            cv2.imwrite(save_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
-                                            
-                                            # Live Updates
-                                            disp_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                            live_capture_area.image(disp_img, caption=f"LIVE SCAN: {ts}", use_container_width=True)
-                                            
-                                            # Update Last Artifact View (Only one image stored in view)
-                                            last_artifact_area.image(disp_img, caption=f"LAST CAPTURED: Slide {slide_counter}", use_container_width=True)
-                                            
-                                            st.toast(f"Event Logged: {ts} -> Saved to Disk")
-                                            curr += int(fps * max_skip)
-                                        else:
-                                            curr += int(fps * min_skip)
-                                    
-                                    cap.release()
-                                    prog_bar.progress(1.0)
-                                    st.session_state['scan_complete'] = True 
-                                    console_ph.markdown('<div class="console-box" style="color:#10b981; border-color:#10b981;">✓ SEQUENCE COMPLETE</div>', unsafe_allow_html=True)
-                                    
+                                if stream_link:
+                                    cap = cv2.VideoCapture(stream_link, cv2.CAP_FFMPEG)
+                            except Exception as e:
+                                st.error(f"Fallback Failed: {e}")
+                        
+                        # --- MAIN PROCESSING LOOP ---
+                        if cap and cap.isOpened():
+                            console_ph.markdown(f'<div class="console-box"><span class="blink">●</span> STREAM LOCKED. SEEKING: {fmt(start_t)}</div>', unsafe_allow_html=True)
+                            
+                            fps = cap.get(cv2.CAP_PROP_FPS) or 30
+                            cap.set(cv2.CAP_PROP_POS_MSEC, start_t * 1000)
+                            
+                            last = None
+                            curr = int(start_t * fps)
+                            end = int(end_t * fps)
+                            total = max(1, end - curr)
+                            origin = curr
+                            
+                            sensitivity = st.session_state['sensitivity']
+                            strictness = st.session_state['strictness']
+                            min_skip = st.session_state['min_skip']
+                            max_skip = st.session_state['max_skip']
+                            
+                            slide_counter = 0
+                            start_scan_time = time.time()
+                            max_scan_duration = 600  # 10 minutes limit
+                            max_slides_limit = 100    # Max 100 slides
+                            retry_tolerance = 5
+                            retries = 0
+                            
+                            while curr < end:
+                                # 1. Timeout Check
+                                if time.time() - start_scan_time > max_scan_duration:
+                                    st.warning(f"Scan paused after {max_scan_duration}s to prevent timeout. Download results below.")
+                                    break
+                                
+                                # 2. Slide Limit Check
+                                if slide_counter >= max_slides_limit:
+                                    st.warning(f"Slide limit ({max_slides_limit}) reached to conserve storage.")
+                                    break
+                                
+                                cap.set(cv2.CAP_PROP_POS_FRAMES, curr)
+                                ret, frame = cap.read()
+                                
+                                # 3. Stream Stability Check (Retry Logic)
+                                if not ret:
+                                    retries += 1
+                                    if retries > retry_tolerance:
+                                        st.error("Stream connection lost after multiple retries.")
+                                        break
+                                    time.sleep(1) # Wait a bit before retry
+                                    continue
+                                retries = 0 # Reset retries on success
+                                if not ret: break
+                                
+                                # Update metrics
+                                p = (curr - origin) / total
+                                prog_bar.progress(min(max(p, 0.0), 1.0))
+                                ts = fmt(curr / fps)
+                                console_ph.markdown(f'<div class="console-box"><span class="blink">●</span> PROCESSING: {ts} | BUFFER: OK</div>', unsafe_allow_html=True)
+                                
+                                # CV Logic
+                                small = cv2.resize(frame, (640, 360))
+                                gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+                                gray = cv2.GaussianBlur(gray, (21, 21), 0)
+                                
+                                is_diff = False
+                                if last is None:
+                                    is_diff = True
+                                    last = gray
                                 else:
-                                    st.error("STREAM HANDSHAKE FAILED. Try refreshing cookies or ensure your IP is not blocked.")
+                                    d = cv2.absdiff(last, gray)
+                                    _, th = cv2.threshold(d, sensitivity, 255, cv2.THRESH_BINARY)
+                                    if np.sum(th) > (640 * 360 * (strictness/100) * 255):
+                                        is_diff = True
+                                        last = gray
+                                
+                                if is_diff:
+                                    slide_counter += 1
+                                    
+                                    # SAVE TO DISK (DISK BUFFER)
+                                    file_name = f"slide_{slide_counter:03d}.jpg"
+                                    save_path = os.path.join(st.session_state['scan_temp_dir'], file_name)
+                                    # 4. JPEG Compression (Quality 50) to save disk space
+                                    cv2.imwrite(save_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
+                                    
+                                    # Live Updates
+                                    disp_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                    live_capture_area.image(disp_img, caption=f"LIVE SCAN: {ts}", use_container_width=True)
+                                    
+                                    # Update Last Artifact View (Only one image stored in view)
+                                    last_artifact_area.image(disp_img, caption=f"LAST CAPTURED: Slide {slide_counter}", use_container_width=True)
+                                    
+                                    st.toast(f"Event Logged: {ts} -> Saved to Disk")
+                                    curr += int(fps * max_skip)
+                                else:
+                                    curr += int(fps * min_skip)
+                            
+                            cap.release()
+                            prog_bar.progress(1.0)
+                            st.session_state['scan_complete'] = True 
+                            console_ph.markdown('<div class="console-box" style="color:#10b981; border-color:#10b981;">✓ SEQUENCE COMPLETE</div>', unsafe_allow_html=True)
+                            
+                        else:
+                            st.error("STREAM HANDSHAKE FAILED. Try refreshing cookies or ensure your IP is not blocked.")
                     except Exception as e:
                         st.error(f"Error during scan: {str(e)}")
             # --- DISPLAY RESULTS (IF ANY IMAGES EXIST ON DISK) ---
@@ -1260,3 +1291,4 @@ st.markdown("""
     // <span style="opacity:0.5">ALL_RIGHTS_RESERVED_2024</span>
 </div>
 """, unsafe_allow_html=True)
+```
