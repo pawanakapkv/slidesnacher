@@ -700,7 +700,7 @@ def get_video_info(url, cookies=None, proxy=None):
     opts = {
         'quiet': True, 
         'nocheckcertificate': True, 
-        'user_agent': 'Mozilla/5.0',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'noplaylist': True 
     }
     if cookies: opts['cookiefile'] = cookies
@@ -971,7 +971,13 @@ if st.session_state.get('setup_active', False):
                         'quiet': True, 
                         'nocheckcertificate': True, 
                         'noplaylist': True,
-                        'cookiefile': st.session_state.get('cookies_path') 
+                        'cookiefile': st.session_state.get('cookies_path'),
+                        # ADDED: detailed headers to mimic a real browser to avoid 403/signature issues
+                        'http_headers': {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                            'Accept': '*/*',
+                            'Accept-Language': 'en-US,en;q=0.5',
+                        }
                     }
                     
                     # Add proxy if available in secrets
@@ -1086,7 +1092,7 @@ if st.session_state.get('setup_active', False):
                                     console_ph.markdown('<div class="console-box" style="color:#10b981; border-color:#10b981;">✓ SEQUENCE COMPLETE</div>', unsafe_allow_html=True)
                                     
                                 else:
-                                    st.error("STREAM HANDSHAKE FAILED")
+                                    st.error("STREAM HANDSHAKE FAILED. Try refreshing cookies or ensure your IP is not blocked.")
                     except Exception as e:
                         st.error(f"Error during scan: {str(e)}")
 
