@@ -9,6 +9,7 @@ import time
 import base64
 import zipfile
 import traceback
+import random
 from PIL import Image
 
 # 1. PAGE CONFIGURATION
@@ -714,16 +715,29 @@ st.markdown("""
 # --- HELPERS ---
 
 def get_video_info(url, cookies=None, proxy=None):
+    # Common options
     opts = {
         'quiet': True, 
         'nocheckcertificate': True, 
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'noplaylist': True,
-        'force_ipv4': True,  # ADDED: Forces IPv4 to reduce block chance
-        'cachedir': False,   # ADDED: Disables cache to avoid stale auth data
+        'force_ipv4': True,
+        'cachedir': False,
     }
     if cookies: opts['cookiefile'] = cookies
-    if proxy: opts['proxy'] = proxy
+
+    # STRATEGY 1: TRY WITH PROXY (If provided)
+    if proxy:
+        opts['proxy'] = proxy
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                return ydl.extract_info(url, download=False), None
+        except Exception as e:
+            # If Proxy fails (e.g., 402 Payment Required), drop proxy and try direct
+            if 'proxy' in opts:
+                del opts['proxy']
+
+    # STRATEGY 2: DIRECT CONNECTION (Fallback or Default)
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             return ydl.extract_info(url, download=False), None
@@ -938,8 +952,9 @@ if st.session_state.get('setup_active', False):
                         fmts = [f for f in meta.get('formats', []) if f.get('height')]
                         heights = sorted(list(set(f['height'] for f in fmts)), reverse=True)
                         # UPDATE: Filter out AV1 codec (av01) which causes OpenCV errors
-                        q_map = {f"{h}p RAW": f"bestvideo[height<={h}][vcodec!*=av01]/best[height<={h}][vcodec!*=av01]" for h in heights}
-                        q_map["AUTO_NEGOTIATE"] = "bestvideo[vcodec!*=av01]/best[vcodec!*=av01]"
+                        # ALSO UPDATE: Prefer progressive MP4 over DASH/HLS
+                        q_map = {f"{h}p RAW": f"bestvideo[height<={h}][ext=mp4]/best[height<={h}][ext=mp4]" for h in heights}
+                        q_map["AUTO_NEGOTIATE"] = "best[ext=mp4]/best"
                         qual = st.selectbox("QUALITY STREAM", list(q_map.keys()), label_visibility="collapsed")
                     
                     with c_conf2:
@@ -1024,6 +1039,7 @@ if st.session_state.get('setup_active', False):
                         
                         # ATTEMPT 1: Selected Quality
                         try:
+                            # REMOVED: extractor_args enforcement to prevent HLS links
                             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                                 info = ydl.extract_info(url_wiz, download=False)
                                 stream_link = info.get('url')
@@ -1040,7 +1056,7 @@ if st.session_state.get('setup_active', False):
                             st.toast("⚠️ Primary Handshake Failed. Engaging Fallback Protocol...", icon="🔄")
                             console_ph.markdown('<div class="console-box" style="color:#fbbf24; border-color:#fbbf24;">⚠ RETRYING WITH COMPATIBILITY MODE...</div>', unsafe_allow_html=True)
                             
-                            # Switch to robust format
+                            # Switch to robust format - force MP4
                             ydl_opts['format'] = 'best[ext=mp4]/best'
                             try:
                                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
