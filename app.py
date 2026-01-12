@@ -1074,8 +1074,8 @@ if st.session_state.get('setup_active', False):
                             
                             slide_counter = 0
                             start_scan_time = time.time()
-                            max_scan_duration = 600  # 10 minutes limit
-                            max_slides_limit = 100    # Max 100 slides
+                            max_scan_duration = 3600  # UPDATED: 60 minutes limit (was 600s)
+                            max_slides_limit = 300    # UPDATED: Max 300 slides (was 100)
                             retry_tolerance = 5
                             retries = 0
                             
@@ -1314,6 +1314,6 @@ st.markdown("""
 <div class="tech-footer">
     SYSTEM_DESIGN BY 
     <a href="https://www.linkedin.com/in/pawan-kumar-verma" target="_blank">PAWAN KUMAR VERMA</a> 
-    // <span style="opacity:0.5">ALL_RIGHTS_RESERVED_2024</span>
+    // <span style="opacity:0.5">ALL_RIGHTS_RESERVED_2026</span>
 </div>
 """, unsafe_allow_html=True)
